@@ -1,5 +1,5 @@
 blueprint:
-  name: Frigate AI Notification - CUSTOM Review Clip Custom
+  name: Frigate AI Notification
   author: sam2kb
   description: >
     [0.3.9] A clean, low-noise blueprint for smart multi-camera alerts powered by Frigate and (optionally) LLMVision.
@@ -342,9 +342,9 @@ trigger_variables:
 trigger:
   - trigger: mqtt
     id: frigate-event
-    topic: frigate/reviews
+    topic: frigate/events
     value_template: "{{ value_json['type'] }}"
-    payload: "alert"
+    payload: "new"
   - trigger: event
     event_type: mobile_app_notification_action
     id: mobile-action
@@ -574,9 +574,9 @@ action:
       icon: >-
         mdi:{% if label == 'Person' %}account-outline{% elif label == 'Dog' %}dog{% elif label == 'Cat' %}cat{% elif label == 'Car' %}car{% else %}home-assistant{% endif %}
 
-      clip_path: "/api/frigate/review/{{ id }}/clip.mp4"
-      snapshot_path: "/api/frigate/review/{{ id }}/thumbnail.jpg"
-      thumbnail_path: "/api/frigate/review/{{ id }}/thumbnail.jpg"
+      clip_path: "/api/frigate/notifications/{{ id }}/{{ camera }}/clip.mp4"
+      snapshot_path: "/api/frigate/notifications/{{ id }}/snapshot.jpg"
+      thumbnail_path: "/api/frigate/notifications/{{ id }}/thumbnail.jpg"
 
       clip_url: "{{ (effective_base_url ~ clip_path) if effective_base_url else clip_path }}"
       clip_url_signed: "{{ clip_url }}?sign=true"
@@ -623,7 +623,8 @@ action:
         {% endif %}
 
       # Use camera slug as tag to collapse cards per camera
-      tag_key: "{{ camera }}"
+      #tag_key: "{{ camera }}"
+      tag_key: "{{ camera }}_{{ id }}"
 
   - choose:
       - conditions:
@@ -1194,7 +1195,8 @@ action:
                     data:
                       channel: "{{ camera_name }} Notifications"
                       timeout: "{{ timeout_secs }}"
-                      tag: "{{ id }}"          # END uses event id, not camera, to keep a final card per event
+                      #tag: "{{ id }}"          # END uses event id, not camera, to keep a final card per event
+                      tag: "{{ tag_key }}"
                       group: "{{ camera_name }}"
                       notification_icon: "{{ icon }}"
                       data: { ttl: "0", priority: "high" }
