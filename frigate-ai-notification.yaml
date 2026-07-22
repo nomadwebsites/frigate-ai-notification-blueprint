@@ -1,5 +1,5 @@
 blueprint:
-  name: Frigate AI Notification
+  name: Frigate AI Notification - CUSTOM Review Clip Custom
   author: sam2kb
   description: >
     [0.3.9] A clean, low-noise blueprint for smart multi-camera alerts powered by Frigate and (optionally) LLMVision.
@@ -342,9 +342,9 @@ trigger_variables:
 trigger:
   - trigger: mqtt
     id: frigate-event
-    topic: frigate/events
+    topic: frigate/reviews
     value_template: "{{ value_json['type'] }}"
-    payload: "new"
+    payload: "alert"
   - trigger: event
     event_type: mobile_app_notification_action
     id: mobile-action
@@ -574,9 +574,9 @@ action:
       icon: >-
         mdi:{% if label == 'Person' %}account-outline{% elif label == 'Dog' %}dog{% elif label == 'Cat' %}cat{% elif label == 'Car' %}car{% else %}home-assistant{% endif %}
 
-      clip_path: "/api/frigate/notifications/{{ id }}/{{ camera }}/clip.mp4"
-      snapshot_path: "/api/frigate/notifications/{{ id }}/snapshot.jpg"
-      thumbnail_path: "/api/frigate/notifications/{{ id }}/thumbnail.jpg"
+      clip_path: "/api/frigate/review/{{ id }}/clip.mp4"
+      snapshot_path: "/api/frigate/review/{{ id }}/thumbnail.jpg"
+      thumbnail_path: "/api/frigate/review/{{ id }}/thumbnail.jpg"
 
       clip_url: "{{ (effective_base_url ~ clip_path) if effective_base_url else clip_path }}"
       clip_url_signed: "{{ clip_url }}?sign=true"
