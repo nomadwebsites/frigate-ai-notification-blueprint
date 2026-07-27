@@ -25,7 +25,7 @@ blueprint:
       selector:
         select:
           multiple: true
-          options: [person, dog, cat, car, package, bicycle, face]
+          options: [person, dog, cat, car, package, bicycle, face, bird, horse, sheep, cow, bear, deer]
           sort: false
           custom_value: false
 
