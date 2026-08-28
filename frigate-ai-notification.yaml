@@ -2,7 +2,7 @@ blueprint:
   name: Frigate AI Notification - Custom Review-Based Fix
   author: sam2kb+nomad
   description: >
-    [0.3.9] A clean, low-noise blueprint for smart multi-camera alerts powered by Frigate and (optionally) LLMVision.
+    [0.3.9c] A clean, low-noise blueprint for smart multi-camera alerts powered by Frigate and (optionally) LLMVision.
     It focuses on fast, relevant notifications with the right links and the right amount of detail - no spam.
   source_url: https://github.com/sam2kb/frigate-ai-notification-blueprint/blob/main/frigate-ai-notification.yaml
   domain: automation
@@ -586,6 +586,33 @@ action:
       video_ios: "{{ effective_base_url }}/api/frigate/notifications/{{ id }}/{{ camera }}/master.m3u8"
       live_deeplink: "entityId:camera.{{ camera }}"
 
+      # --- Frigate app direct links (replaces HA-proxied links) ---
+      frigate_app_base: >-
+        {% set configured = (input_frigate_url | default('', true) | trim) %}
+        {{ configured | regex_replace('/+$', '') if configured else '' }}
+
+      frigate_app_clip_url: >-
+        {% if frigate_app_base %}
+          {{ frigate_app_base }}/explore?event_id={{ id }}
+        {% else %}
+          {{ clip_url }}
+        {% endif %}
+
+      frigate_app_review_url: >-
+        {% if frigate_app_base %}
+          {{ frigate_app_base }}/review?id={{ id }}
+        {% else %}
+          {{ frigate_review_url }}
+        {% endif %}
+
+      frigate_app_live_url: >-
+        {% if frigate_app_base %}
+          {{ frigate_app_base }}/#{{ camera }}
+        {% else %}
+          {{ live_deeplink }}
+        {% endif %}
+
+      # --- Legacy HA-proxied links (used as fallback) ---
       has_clip: "{{ (payload.get('after') or {}).get('has_clip', false) }}"
       click_target_url: "{{ clip_url if has_clip else snapshot_url }}"
       ios_click_target_url: >-
@@ -750,22 +777,22 @@ action:
                               data: { ttl: "0", priority: "high" }
                               attachment: { url: "{{ thumbnail_url ~ '?t=' ~ now_ts }}" }
                               image: "{{ thumbnail_android_url ~ '&t=' ~ now_ts }}"
-                              clickAction: "{{ ios_click_target_url }}"
+                              clickAction: "{{ frigate_app_clip_url }}"
                               push: { interruption-level: active }
                               alert_once: "{{ alert_once }}"
                               actions:
                                 - action: URI
                                   title: View Clip
-                                  uri: "{{ view_clip_uri_initial }}"
+                                  uri: "{{ frigate_app_clip_url }}"
                                 - action: URI
                                   title: View Summary
                                   uri: "{{ input_dashboard }}"
                                 - action: URI
                                   title: Open Frigate
-                                  uri: "{{ frigate_review_url }}"
+                                  uri: "{{ frigate_app_review_url }}"
                                 - action: URI
                                   title: View Live
-                                  uri: "{{ live_deeplink }}"
+                                  uri: "{{ frigate_app_live_url }}"
                                 - action: "SILENCE_{{ this.entity_id }}__{{ camera }}"
                                   title: Silence
                                   behavior: textInput
@@ -785,19 +812,19 @@ action:
                           data: { ttl: "0", priority: "high" }
                           attachment: { url: "{{ thumbnail_url }}" }
                           image: "{{ thumbnail_android_url }}"
-                          clickAction: "{{ ios_click_target_url }}"
+                          clickAction: "{{ frigate_app_clip_url }}"
                           push: { interruption-level: active }
                           alert_once: "{{ alert_once }}"
                           actions:
                             - action: URI
                               title: View Clip
-                              uri: "{{ view_clip_uri_initial }}"
+                              uri: "{{ frigate_app_clip_url }}"
                             - action: URI
                               title: Open Frigate
-                              uri: "{{ frigate_review_url }}"
+                              uri: "{{ frigate_app_review_url }}"
                             - action: URI
                               title: View Live
-                              uri: "{{ live_deeplink }}"
+                              uri: "{{ frigate_app_live_url }}"
                             - action: "SILENCE_{{ this.entity_id }}__{{ camera }}"
                               title: Silence
                               behavior: textInput
@@ -1081,19 +1108,19 @@ action:
                             notification_icon: "{{ icon }}"
                             attachment: { url: "{{ thumbnail_url ~ '?t=' ~ thumb_ts_update }}" }
                             image: "{{ thumbnail_android_url ~ '&t=' ~ thumb_ts_update }}"
-                            clickAction: "{{ click_target_url_update_ios }}"
+                            clickAction: "{{ frigate_app_clip_url }}"
                             push: { interruption-level: active }
                             alert_once: "{{ alert_once }}"
                             actions:
                               - action: URI
                                 title: View Clip
-                                uri: "{{ view_clip_uri_update }}"
+                                uri: "{{ frigate_app_clip_url }}"
                               - action: URI
                                 title: Open Frigate
-                                uri: "{{ frigate_review_url }}"
+                                uri: "{{ frigate_app_review_url }}"
                               - action: URI
                                 title: View Live
-                                uri: "{{ live_deeplink }}"
+                                uri: "{{ frigate_app_live_url }}"
                               - action: "SILENCE_{{ this.entity_id }}__{{ camera }}"
                                 title: Silence
                                 behavior: textInput
@@ -1202,25 +1229,19 @@ action:
                       data: { ttl: "0", priority: "high" }
                       attachment: { url: "{{ thumbnail_url ~ '?t=' ~ now_ts }}" }
                       image: "{{ thumbnail_android_url ~ '&t=' ~ now_ts }}"
-                      clickAction: >-
-                        {% set has = (final_has_clip | default(has_clip)) %}
-                        {% if input_ios_live_view %}{{ video_ios if has else snapshot_url }}
-                        {% else %}{{ clip_url if has else snapshot_url }}{% endif %}
+                      clickAction: "{{ frigate_app_clip_url }}"
                       push: { interruption-level: active }
                       alert_once: "{{ alert_once }}"
                       actions:
                         - action: URI
                           title: View Clip
-                          uri: >-
-                            {% set has = (final_has_clip | default(has_clip)) %}
-                            {% if input_ios_live_view %}{{ video_ios if has else clip_url }}
-                            {% else %}{{ clip_url }}{% endif %}
+                          uri: "{{ frigate_app_clip_url }}"
                         - action: URI
                           title: Open Frigate
-                          uri: "{{ frigate_review_url }}"
+                          uri: "{{ frigate_app_review_url }}"
                         - action: URI
                           title: View Live
-                          uri: "{{ live_deeplink }}"
+                          uri: "{{ frigate_app_live_url }}"
                         - action: "SILENCE_{{ this.entity_id }}__{{ camera }}"
                           title: Silence
                           behavior: textInput
@@ -1365,19 +1386,19 @@ action:
                             {{ thumbnail_url ~ '?t=' ~ now_ts }}
                           {% endif %}
                       image: "{{ thumbnail_android_url ~ '?t=' ~ now_ts }}"
-                      clickAction: "{{ (video_ios if input_ios_live_view else clip_url) }}"
+                      clickAction: "{{ frigate_app_clip_url }}"
                       push: { interruption-level: active }
                       alert_once: "{{ alert_once }}"
                       actions:
                         - action: URI
                           title: View Clip
-                          uri: "{{ (video_ios if input_ios_live_view else clip_url) }}"
+                          uri: "{{ frigate_app_clip_url }}"
                         - action: URI
                           title: Open Frigate
-                          uri: "{{ frigate_review_url }}"
+                          uri: "{{ frigate_app_review_url }}"
                         - action: URI
                           title: View Live
-                          uri: "{{ live_deeplink }}"
+                          uri: "{{ frigate_app_live_url }}"
                         - action: "SILENCE_{{ this.entity_id }}__{{ camera }}"
                           title: Silence
                           behavior: textInput
