@@ -586,19 +586,37 @@ action:
       video_ios: "{{ effective_base_url }}/api/frigate/notifications/{{ id }}/{{ camera }}/master.m3u8"
       live_deeplink: "entityId:camera.{{ camera }}"
 
-      # --- Viewer for Frigate / Phylax app deep links ---
-      # On Android, the HA Companion app intercepts bare frigate:// URIs.
-      # We prefix with deep-link:// so the HA app fires a proper Android
-      # deep-link intent, routing correctly to the Viewer for Frigate app.
-      # (Phylax/Viewer registers the frigate:// scheme.)
+      # --- Viewer for Frigate / Phylax app deep links (cross-platform) ---
+      #
+      # Android: HA Companion's deep-link:// prefix wraps the target URI.
+      #   The inner frigate:// URI must be URL-encoded to avoid the
+      #   double-:// confusing the intent parser.
+      #   Target apps: Viewer for Frigate (com.frigateviewer) or Phylax
+      #   (com.asksakis.freegate) — both register the frigate:// scheme.
+      #
+      # iOS: bare frigate:// URIs in the "url" data field for notification
+      #   tap. iOS action buttons (uri field) are intercepted by HA and
+      #   don't open external apps — known limitation of HA iOS Companion.
       frigate_app_clip_url: >-
-        deep-link://frigate://event/{{ id }}
- 
+        {% if input_ios_live_view %}
+          frigate://event/{{ id }}
+        {% else %}
+          deep-link://frigate%3A%2F%2Fevent%2F{{ id }}
+        {% endif %}
+      
       frigate_app_review_url: >-
-        deep-link://frigate://review/{{ id }}
-
+        {% if input_ios_live_view %}
+          frigate://review/{{ id }}
+        {% else %}
+          deep-link://frigate%3A%2F%2Freview%2F{{ id }}
+        {% endif %}
+      
       frigate_app_live_url: >-
-        deep-link://frigate://motion?camera={{ camera }}&ts={{ as_timestamp(now()) | int }}
+        {% if input_ios_live_view %}
+          frigate://motion?camera={{ camera }}&ts={{ as_timestamp(now()) | int }}
+        {% else %}
+          deep-link://frigate%3A%2F%2Fmotion%3Fcamera%3D{{ camera }}%26ts%3D{{ as_timestamp(now()) | int }}
+        {% endif %}
 
       # --- Legacy HA-proxied links (kept for reference, no longer used) ---
       has_clip: "{{ (payload.get('after') or {}).get('has_clip', false) }}"
@@ -766,6 +784,7 @@ action:
                               attachment: { url: "{{ thumbnail_url ~ '?t=' ~ now_ts }}" }
                               image: "{{ thumbnail_android_url ~ '&t=' ~ now_ts }}"
                               clickAction: "{{ frigate_app_clip_url }}"
+                              url: "{{ frigate_app_live_url }}"
                               push: { interruption-level: active }
                               alert_once: "{{ alert_once }}"
                               actions:
@@ -801,6 +820,7 @@ action:
                           attachment: { url: "{{ thumbnail_url }}" }
                           image: "{{ thumbnail_android_url }}"
                           clickAction: "{{ frigate_app_clip_url }}"
+                          url: "{{ frigate_app_live_url }}"
                           push: { interruption-level: active }
                           alert_once: "{{ alert_once }}"
                           actions:
@@ -1097,6 +1117,7 @@ action:
                             attachment: { url: "{{ thumbnail_url ~ '?t=' ~ thumb_ts_update }}" }
                             image: "{{ thumbnail_android_url ~ '&t=' ~ thumb_ts_update }}"
                             clickAction: "{{ frigate_app_clip_url }}"
+                            url: "{{ frigate_app_live_url }}"
                             push: { interruption-level: active }
                             alert_once: "{{ alert_once }}"
                             actions:
@@ -1218,6 +1239,7 @@ action:
                       attachment: { url: "{{ thumbnail_url ~ '?t=' ~ now_ts }}" }
                       image: "{{ thumbnail_android_url ~ '&t=' ~ now_ts }}"
                       clickAction: "{{ frigate_app_clip_url }}"
+                      url: "{{ frigate_app_live_url }}"
                       push: { interruption-level: active }
                       alert_once: "{{ alert_once }}"
                       actions:
@@ -1233,6 +1255,7 @@ action:
                         - action: "SILENCE_{{ this.entity_id }}__{{ camera }}"
                           title: Silence
                           behavior: textInput
+
           - choose:
               - conditions:
                   - condition: template
@@ -1375,6 +1398,7 @@ action:
                           {% endif %}
                       image: "{{ thumbnail_android_url ~ '?t=' ~ now_ts }}"
                       clickAction: "{{ frigate_app_clip_url }}"
+                      url: "{{ frigate_app_live_url }}"
                       push: { interruption-level: active }
                       alert_once: "{{ alert_once }}"
                       actions:
