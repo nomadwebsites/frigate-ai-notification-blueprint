@@ -2,7 +2,7 @@ blueprint:
   name: Frigate AI Notification - Custom Review-Based Fix
   author: sam2kb+nomad
   description: >
-    [0.3.9.2c] A clean, low-noise blueprint for smart multi-camera alerts powered by Frigate and (optionally) LLMVision.
+    [0.3.9.3c] A clean, low-noise blueprint for smart multi-camera alerts powered by Frigate and (optionally) LLMVision.
     It focuses on fast, relevant notifications with the right links and the right amount of detail - no spam.
   source_url: https://github.com/sam2kb/frigate-ai-notification-blueprint/blob/main/frigate-ai-notification.yaml
   domain: automation
@@ -586,19 +586,19 @@ action:
       video_ios: "{{ effective_base_url }}/api/frigate/notifications/{{ id }}/{{ camera }}/master.m3u8"
       live_deeplink: "entityId:camera.{{ camera }}"
 
-      # --- Viewer for Frigate app deep links (frigate:// scheme) ---
-      # These open the "Viewer for Frigate" mobile app directly to the
-      # specific event, review, or live camera — no web browser, no HA proxy.
-      # Fallback is not needed because frigate:// URIs work regardless of
-      # whether input_frigate_url is set (the app has its own server config).
+      # --- Viewer for Frigate / Phylax app deep links ---
+      # On Android, the HA Companion app intercepts bare frigate:// URIs.
+      # We prefix with deep-link:// so the HA app fires a proper Android
+      # deep-link intent, routing correctly to the Viewer for Frigate app.
+      # (Phylax/Viewer registers the frigate:// scheme.)
       frigate_app_clip_url: >-
-        frigate://event/{{ id }}
-
+        deep-link://frigate://event/{{ id }}
+ 
       frigate_app_review_url: >-
-        frigate://review/{{ id }}
+        deep-link://frigate://review/{{ id }}
 
       frigate_app_live_url: >-
-        frigate://motion?camera={{ camera }}&ts={{ as_timestamp(now()) | int }}
+        deep-link://frigate://motion?camera={{ camera }}&ts={{ as_timestamp(now()) | int }}
 
       # --- Legacy HA-proxied links (kept for reference, no longer used) ---
       has_clip: "{{ (payload.get('after') or {}).get('has_clip', false) }}"
