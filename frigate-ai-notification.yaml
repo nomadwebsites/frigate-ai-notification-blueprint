@@ -1,5 +1,5 @@
 blueprint:
-  name: Frigate AI Notification - Custom Review-Based Fix
+  name: Frigate AI Notification - Custom Viewer for Frigate deeplinks
   author: sam2kb+nomad
   description: >
     [0.3.91.1c] A clean, low-noise blueprint for smart multi-camera alerts powered by Frigate and (optionally) LLMVision.
