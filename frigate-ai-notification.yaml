@@ -2,7 +2,7 @@ blueprint:
   name: Frigate AI Notification - Custom Viewer for Frigate deeplinks
   author: sam2kb+nomad
   description: >
-    [0.3.91.1c] A clean, low-noise blueprint for smart multi-camera alerts powered by Frigate and (optionally) LLMVision.
+    [0.3.91.2c] A clean, low-noise blueprint for smart multi-camera alerts powered by Frigate and (optionally) LLMVision.
     It focuses on fast, relevant notifications with the right links and the right amount of detail - no spam.
     This custom fork points to the Viewer for Frigate app instead of HA.
   source_url: https://github.com/sam2kb/frigate-ai-notification-blueprint/blob/main/frigate-ai-notification.yaml
@@ -286,7 +286,7 @@ blueprint:
           selector: { text: {} }
         frigate_url:
           name: Frigate Instance URL
-          description: Optional. Full base URL to your Frigate UI (include port if needed), e.g. https://frigate.lan:8971
+          description: Full base URL to your Frigate instance (include port), e.g. http://192.168.68.126:8971. Used both for the review link and as the "server" param for the Viewer for Frigate deep link.
           default: ""
           selector: { text: {} }
         require_zones:
@@ -586,17 +586,20 @@ action:
       thumbnail_android_url: "{{ thumbnail_url ~ '?format=android' }}"
       video_ios: "{{ effective_base_url }}/api/frigate/notifications/{{ id }}/{{ camera }}/master.m3u8"
 
-      # --- Viewer for Frigate app: SINGLE unified live-view link ---
-      # "Viewer for Frigate" (com.frigateviewer) does NOT use a custom
-      # frigate:// scheme. It uses a real HTTPS Universal Link / Android
-      # App Link, so this one URL works identically on iOS and Android
-      # with no app:// or deep-link:// wrapper needed. The OS resolves it
-      # straight to the app if installed (or opens it in a browser if not).
-      # NOTE: verify the "camera" query param name is correct for your
-      # installed app version — if the live view opens the wrong camera,
-      # inspect this page's source to confirm the exact parameter name.
+      # --- Viewer for Frigate app: native deep link (matches the app's own
+      # generated automations). "viewerforfrigate://" is the app's real URI
+      # scheme; server must be the Frigate instance base URL (host:port,
+      # typically :8971). Wrapping with "deep-link://" forces both iOS and
+      # Android Companion apps to hand off straight to the target app,
+      # skipping any browser hop. Raw (unwrapped) scheme is used only for
+      # the Android "url" field; clickAction/uri always use the wrapped form.
+      frigate_server: "{{ (input_frigate_url | default('', true) | trim) }}"
+
       frigate_live_view_url: >-
-        https://sp-engineering.github.io/frigate-viewer/deeplink/automation/?camera={{ camera }}
+        {{ 'viewerforfrigate://camera-preview?camera=' ~ (camera | string | urlencode)
+           ~ '&server=' ~ (frigate_server | urlencode) }}
+
+      frigate_live_view_deeplink: "{{ 'deep-link://' ~ frigate_live_view_url }}"
 
       has_clip: "{{ (payload.get('after') or {}).get('has_clip', false) }}"
 
@@ -755,14 +758,14 @@ action:
                               data: { ttl: "0", priority: "high" }
                               attachment: { url: "{{ thumbnail_url ~ '?t=' ~ now_ts }}" }
                               image: "{{ thumbnail_android_url ~ '&t=' ~ now_ts }}"
-                              clickAction: "{{ frigate_live_view_url }}"
+                              clickAction: "{{ frigate_live_view_deeplink }}"
                               url: "{{ frigate_live_view_url }}"
                               push: { interruption-level: active }
                               alert_once: "{{ alert_once }}"
                               actions:
                                 - action: URI
                                   title: View Live
-                                  uri: "{{ frigate_live_view_url }}"
+                                  uri: "{{ frigate_live_view_deeplink }}"
                                 - action: "SILENCE_{{ this.entity_id }}__{{ camera }}"
                                   title: Silence
                                   behavior: textInput
@@ -782,14 +785,14 @@ action:
                           data: { ttl: "0", priority: "high" }
                           attachment: { url: "{{ thumbnail_url }}" }
                           image: "{{ thumbnail_android_url }}"
-                          clickAction: "{{ frigate_live_view_url }}"
+                          clickAction: "{{ frigate_live_view_deeplink }}"
                           url: "{{ frigate_live_view_url }}"
                           push: { interruption-level: active }
                           alert_once: "{{ alert_once }}"
                           actions:
                             - action: URI
                               title: View Live
-                              uri: "{{ frigate_live_view_url }}"
+                              uri: "{{ frigate_live_view_deeplink }}"
                             - action: "SILENCE_{{ this.entity_id }}__{{ camera }}"
                               title: Silence
                               behavior: textInput
@@ -1066,14 +1069,14 @@ action:
                             notification_icon: "{{ icon }}"
                             attachment: { url: "{{ thumbnail_url ~ '?t=' ~ thumb_ts_update }}" }
                             image: "{{ thumbnail_android_url ~ '&t=' ~ thumb_ts_update }}"
-                            clickAction: "{{ frigate_live_view_url }}"
+                            clickAction: "{{ frigate_live_view_deeplink }}"
                             url: "{{ frigate_live_view_url }}"
                             push: { interruption-level: active }
                             alert_once: "{{ alert_once }}"
                             actions:
                               - action: URI
                                 title: View Live
-                                uri: "{{ frigate_live_view_url }}"
+                                uri: "{{ frigate_live_view_deeplink }}"
                               - action: "SILENCE_{{ this.entity_id }}__{{ camera }}"
                                 title: Silence
                                 behavior: textInput
@@ -1182,14 +1185,14 @@ action:
                       data: { ttl: "0", priority: "high" }
                       attachment: { url: "{{ thumbnail_url ~ '?t=' ~ now_ts }}" }
                       image: "{{ thumbnail_android_url ~ '&t=' ~ now_ts }}"
-                      clickAction: "{{ frigate_live_view_url }}"
+                      clickAction: "{{ frigate_live_view_deeplink }}"
                       url: "{{ frigate_live_view_url }}"
                       push: { interruption-level: active }
                       alert_once: "{{ alert_once }}"
                       actions:
                         - action: URI
                           title: View Live
-                          uri: "{{ frigate_live_view_url }}"
+                          uri: "{{ frigate_live_view_deeplink }}"
                         - action: "SILENCE_{{ this.entity_id }}__{{ camera }}"
                           title: Silence
                           behavior: textInput
@@ -1334,14 +1337,14 @@ action:
                             {{ thumbnail_url ~ '?t=' ~ now_ts }}
                           {% endif %}
                       image: "{{ thumbnail_android_url ~ '?t=' ~ now_ts }}"
-                      clickAction: "{{ frigate_live_view_url }}"
+                      clickAction: "{{ frigate_live_view_deeplink }}"
                       url: "{{ frigate_live_view_url }}"
                       push: { interruption-level: active }
                       alert_once: "{{ alert_once }}"
                       actions:
                         - action: URI
                           title: View Live
-                          uri: "{{ frigate_live_view_url }}"
+                          uri: "{{ frigate_live_view_deeplink }}"
                         - action: "SILENCE_{{ this.entity_id }}__{{ camera }}"
                           title: Silence
                           behavior: textInput
